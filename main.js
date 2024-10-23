@@ -22,7 +22,7 @@ const ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.5);
 scene.add(ambientLight);
 
 
-//function for creating geometries of different color
+//function for creating standart meshes of different colors
 function makeInstance(geometry, color, pos) {
 	const material = new THREE.MeshStandardMaterial({color});
 
@@ -38,18 +38,29 @@ const tankColor = 0xbbeeff;
 const tankBasePosition = new THREE.Vector3(0, 0, 0);
 //creating a rectangular tank base
 const baseGeometry = new THREE.BoxGeometry( 2, 1, 2);
+//creating a platform on top for more turret range of movement
+const platformGeometry = new THREE.CylinderGeometry(0.75, 0.75, 0.6, 16);
 //creating a sphere for the turret base
 const tankPivotGeometry = new THREE.SphereGeometry(0.75,32,16);
+//creating cilinder for the turret
+const turretGeometry = new THREE.CylinderGeometry(0.18, 0.18, 1.3, 16);
 
 //creating respective meshes
 const tankBase = makeInstance(baseGeometry, tankColor, tankBasePosition);
-const tankPivot = makeInstance(tankPivotGeometry, tankColor, new THREE.Vector3(0, 1, 0));
+const tankPlatform = makeInstance(platformGeometry, tankColor, {x:0, y:0, z:0});
+const tankPivot = makeInstance(tankPivotGeometry, tankColor, {x:0, y:1, z:0});
+const tankTurret = makeInstance(turretGeometry,tankColor, {x: 0, y: 0, z: 0});
 
-//this just sets the tankPivot position relative to its base (0.5 above)
-tankPivot.position.copy(tankBasePosition.clone().add(new THREE.Vector3(0, 0.5, 0)));
+//this just sets the positions relative to other positions (adding vectors)
+tankPlatform.position.copy(tankBasePosition.clone().add(new THREE.Vector3(0, 0.6, 0)));
+tankPivot.position.copy(tankPlatform.position.clone());
+tankTurret.position.copy(tankPivot.position.clone().add({x: 0, y: 0.25, z: 0}));
 
-// set childer of the base and add it to the scene
-tankBase.add(tankPivot);
+// putting the scenegraph (tree) together
+tankPivot.add(tankTurret);
+tankPivot.rotation.x = Math.PI / 2; //turret starts in horizontal position
+tankPlatform.add(tankPivot)
+tankBase.add(tankPlatform);
 scene.add(tankBase);
 
 /*
@@ -65,7 +76,6 @@ function render(time) {
 	time *= 0.001;  // convert time to seconds
 
 	tankBase.rotation.y = time;
-	//tank[1].rotation.x = time;
 
 	renderer.render( scene, camera );
 
