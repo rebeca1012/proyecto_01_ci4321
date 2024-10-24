@@ -61,8 +61,9 @@ function makeTank(tankColor, tankBasePosition){
 	tankPivot.position.copy(new THREE.Vector3(0, 0.6, 0));
 	tankTurret.position.copy({x: 0, y: 0.5, z: 0});
 
-	return tankBase;
+	tankBase.pivot = tankPivot; // I want to access once the tank is made
 
+	return tankBase;
 }
 
 //assigning tank color and base position
@@ -71,30 +72,75 @@ const tankBasePosition = new THREE.Vector3(0, 0, 1);
 const tank = makeTank(tankColor, tankBasePosition);
 scene.add(tank);
 
-const tanks =[
-	makeTank(0x44aa88, {x: -3.5, y: 0.5, z: -3}),
-	makeTank(0x8844aa, {x: 3.5, y: 0.5, z: -3})
-]
-
-for (let i = 0; i < tanks.length; i++) {
-	scene.add(tanks[i]);
-}
 /*
 const material = new THREE.MeshPhongMaterial( { color: 0xbbeeff } );
-const cube = new THREE.Mesh( geometry, material );
+const cube = new THREE.Mesh( geometry, material );   
 scene.add( cube );
 */
 camera.position.z = 5;
 camera.position.y = 1;
 
-//render and animation function
-function render(time) {
-	time *= 0.001;  // convert time to seconds
+//Handling events
+//Inputs by polling
+const keys = {
+	ArrowUp: false, //vehicle movement
+	ArrowDown: false,
+	ArrowLeft: false,
+	ArrowRight: false,
+	KeyW: false,  //turret movement
+	KeyA: false,
+	KeyS: false,
+	KeyD: false,
+	Space: false //shoot
+};
 
-	tank.rotation.y = time;
+//Input listener
+window.addEventListener('keydown', (event) => {
+	if (keys.hasOwnProperty(event.code)) {
+		keys[event.code] = true;
+	}
+});
+
+window.addEventListener('keyup', (event) => {
+	if (keys.hasOwnProperty(event.code)) {
+		keys[event.code] = false;
+	}
+});
+
+//Input Handling
+const tankPivot = tank.children[0].children[0];
+const rotationSpeed = 1;
+function handleInput(deltaTime) {
+
+	if (keys.KeyD) {
+		tankPivot.rotation.z -= rotationSpeed * deltaTime;
+	}
+	else if (keys.KeyA) {
+		tankPivot.rotation.z += rotationSpeed * deltaTime;
+	}
+
+	if (keys.KeyW) {
+		tankPivot.rotation.x -= rotationSpeed * deltaTime;
+	}
+	else if (keys.KeyS) {
+		tankPivot.rotation.x += rotationSpeed * deltaTime;
+	}
+	
+}
+
+//render and animation function
+let then = 0;
+
+function render(now) {
+	now *= 0.001;  // convert time to seconds
+	const deltaTime = now - then;
+	then = now;
+
+	handleInput(deltaTime);
 
 	renderer.render( scene, camera );
 
-	requestAnimationFrame( render );
+	requestAnimationFrame(render);
+
 }
 requestAnimationFrame(render);
