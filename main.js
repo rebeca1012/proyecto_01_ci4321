@@ -126,6 +126,23 @@ function handleInput(deltaTime) {
 		tankPivot.rotation.x += rotationSpeed * deltaTime;
 	}
 	
+	if (keys.ArrowRight) {
+		tank.rotation.y += rotationSpeed * deltaTime;
+	}
+	else if (keys.ArrowLeft) {
+		tank.rotation.y -= rotationSpeed * deltaTime;
+	}
+
+	if (keys.ArrowUp) {
+		tank.position.z += 0.1 * deltaTime;
+	}
+	else if (keys.ArrowDown) {
+		tank.position.z -= 0.1 * deltaTime;
+	}
+
+	if (keys.Space) {
+		console.log("Shoot");
+	}
 }
 
 //render and animation function
