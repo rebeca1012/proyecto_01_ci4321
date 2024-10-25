@@ -106,9 +106,11 @@ window.addEventListener('keyup', (event) => {
 		keys[event.code] = false;
 	}
 });
+// Store the initial rotation matrix of the turret
 
 //Input Handling
 const tankPivot = tank.children[0].children[0];
+let initialTurretMatrix = tankPivot.matrix.clone();
 const rotationSpeed = 1;
 function handleInput(deltaTime) {
 
@@ -120,7 +122,39 @@ function handleInput(deltaTime) {
 	}
 
 	if (keys.KeyW) {
-		tankPivot.rotation.x -= rotationSpeed * deltaTime;
+		
+		//tankPivot.rotation.x -= rotationSpeed * deltaTime;
+		console.log("Rotating turret up");
+      	tankPivot.matrix.copy(initialTurretMatrix); // Reset to initial rotation
+
+      	// Create a translation matrix to move the pivot to the origin
+    	const translationToOrigin = new THREE.Matrix4().makeTranslation(
+        	-tankPivot.position.x,
+        	-tankPivot.position.y,
+        	-tankPivot.position.z
+    	);
+
+    // Create a translation matrix to move the pivot back to its original position
+    	const translationBack = new THREE.Matrix4().makeTranslation(
+        	tankPivot.position.x,
+        	tankPivot.position.y,
+        	tankPivot.position.z
+    	);
+		
+		// Create a rotation matrix around the local y-axis
+      	const upRotation = new THREE.Matrix4().makeRotationX(rotationSpeed * deltaTime);
+      	console.log("Rotation Matrix:", upRotation.elements);
+
+      	const composedTransformation = new THREE.Matrix4()
+        .multiply(translationBack)
+        .multiply(upRotation)
+        .multiply(translationToOrigin);
+		
+		tankPivot.applyMatrix4(composedTransformation);
+      	//tankPivot.matrixWorldNeedsUpdate = true;
+		
+
+
 	}
 	else if (keys.KeyS) {
 		tankPivot.rotation.x += rotationSpeed * deltaTime;
@@ -145,6 +179,22 @@ function handleInput(deltaTime) {
 	}
 }
 
+function rotateTurret(turret, axis, angle){
+	switch (axis){
+		case 'x':
+			const upRotation = new THREE.Matrix4().makeRotationX(angle);
+			turret.matrix.multiply(upRotation);
+			turret.matrixWorldNedsUpdate = true;
+			break;
+		case 'y':
+			turret.rotation.y += angle;
+			break;
+		case 'z':
+			turret.rotation.z += angle;
+			break;
+	}
+}
+
 //render and animation function
 let then = 0;
 
@@ -156,7 +206,7 @@ function render(now) {
 	handleInput(deltaTime);
 
 	renderer.render( scene, camera );
-
+	
 	requestAnimationFrame(render);
 
 }
