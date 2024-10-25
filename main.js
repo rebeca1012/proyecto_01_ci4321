@@ -110,7 +110,7 @@ window.addEventListener('keyup', (event) => {
 
 //Input Handling
 const tankPivot = tank.children[0].children[0];
-let initialTurretMatrix = tankPivot.matrix.clone();
+const initialRotationMatrix = tankPivot.matrix.clone();
 const rotationSpeed = 1;
 function handleInput(deltaTime) {
 
@@ -125,14 +125,16 @@ function handleInput(deltaTime) {
 		
 		//tankPivot.rotation.x -= rotationSpeed * deltaTime;
 		console.log("Rotating turret up");
-      	tankPivot.matrix.copy(initialTurretMatrix); // Reset to initial rotation
-
-      	// Create a translation matrix to move the pivot to the origin
-    	const translationToOrigin = new THREE.Matrix4().makeTranslation(
-        	-tankPivot.position.x,
-        	-tankPivot.position.y,
-        	-tankPivot.position.z
-    	);
+    
+      	// Reset tankPivot to its original rotation
+		tankPivot.matrix.copy(initialRotationMatrix);
+		
+		// Create a translation matrix to move the pivot to the origin
+		const translationToOrigin = new THREE.Matrix4().makeTranslation(
+			-tankPivot.position.x,
+			-tankPivot.position.y,
+			-tankPivot.position.z
+		);
 
     // Create a translation matrix to move the pivot back to its original position
     	const translationBack = new THREE.Matrix4().makeTranslation(
@@ -141,17 +143,30 @@ function handleInput(deltaTime) {
         	tankPivot.position.z
     	);
 		
-		// Create a rotation matrix around the local y-axis
-      	const upRotation = new THREE.Matrix4().makeRotationX(rotationSpeed * deltaTime);
-      	console.log("Rotation Matrix:", upRotation.elements);
+		// Create a rotation matrix around the local x-axis
+		//const upRotation = new THREE.Matrix4().makeRotationX(-rotationSpeed * deltaTime);
+		const localXAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(tankPivot.quaternion).normalize();
+		const upRotation = new THREE.Matrix4().makeRotationAxis(localXAxis, -rotationSpeed * deltaTime);
+		console.log("Rotation Matrix:", upRotation.elements);
+		// Apply the rotation matrix to the tankPivot
+		//tankPivot.applyMatrix4(upRotation);
 
-      	const composedTransformation = new THREE.Matrix4()
-        .multiply(translationBack)
-        .multiply(upRotation)
-        .multiply(translationToOrigin);
-		
+		// Create a rotation matrix around the local y-axis
+      	//const upRotation = new THREE.Matrix4().makeRotationX(- rotationSpeed * deltaTime);
+
+		const composedTransformation = new THREE.Matrix4()
+        	.multiply(translationBack)
+        	.multiply(upRotation)
+        	.multiply(translationToOrigin);
+
+	  	
+		//tankPivot.applyMatrix4(translationToOrigin);
+
+
+		//tankPivot.applyMatrix4(translationBack);
+
+// Apply the composed transformation to the tankPivot
 		tankPivot.applyMatrix4(composedTransformation);
-      	//tankPivot.matrixWorldNeedsUpdate = true;
 		
 
 
