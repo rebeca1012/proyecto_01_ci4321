@@ -52,7 +52,7 @@ function makeTank(tankColor, tankBasePosition){
 
 	// putting the scenegraph (tree) together
 	tankPivot.add(tankTurret);
-	tankPivot.rotation.x = Math.PI / 2; //turret starts in horizontal position
+	tankPivot.rotation.x = - Math.PI / 2; //turret starts in horizontal position
 	tankPlatform.add(tankPivot)
 	tankBase.add(tankPlatform);
 	
@@ -61,40 +61,181 @@ function makeTank(tankColor, tankBasePosition){
 	tankPivot.position.copy(new THREE.Vector3(0, 0.6, 0));
 	tankTurret.position.copy({x: 0, y: 0.5, z: 0});
 
-	return tankBase;
+	tankBase.pivot = tankPivot; // I want to access once the tank is made
 
+	return tankBase;
 }
 
 //assigning tank color and base position
 const tankColor = 0xbbeeff;
-const tankBasePosition = new THREE.Vector3(0, 0, 1);
+const tankBasePosition = new THREE.Vector3(0, 0, 0);
 const tank = makeTank(tankColor, tankBasePosition);
 scene.add(tank);
 
-const tanks =[
-	makeTank(0x44aa88, {x: -3.5, y: 0.5, z: -3}),
-	makeTank(0x8844aa, {x: 3.5, y: 0.5, z: -3})
-]
-
-for (let i = 0; i < tanks.length; i++) {
-	scene.add(tanks[i]);
-}
-/*
-const material = new THREE.MeshPhongMaterial( { color: 0xbbeeff } );
-const cube = new THREE.Mesh( geometry, material );
-scene.add( cube );
-*/
 camera.position.z = 5;
 camera.position.y = 1;
 
-//render and animation function
-function render(time) {
-	time *= 0.001;  // convert time to seconds
+//Handling events
+//Inputs by polling
+const keys = {
+	ArrowUp: false, //vehicle movement
+	ArrowDown: false,
+	ArrowLeft: false,
+	ArrowRight: false,
+	KeyW: false,  //turret movement
+	KeyA: false,
+	KeyS: false,
+	KeyD: false,
+	Space: false //shoot
+};
 
-	tank.rotation.y = time;
+//Input listener
+window.addEventListener('keydown', (event) => {
+	if (keys.hasOwnProperty(event.code)) {
+		keys[event.code] = true;
+	}
+});
+
+window.addEventListener('keyup', (event) => {
+	if (keys.hasOwnProperty(event.code)) {
+		keys[event.code] = false;
+	}
+});
+
+//Input Handling
+const tankPivot = tank.children[0].children[0];
+
+const rotationSpeed = 1;
+const movementSpeed = 1;
+function handleInput(deltaTime) {
+
+	if (keys.KeyD) {
+
+		//generate a rotation matrix for the pivot around the parents' Y axis
+		
+			const composedTransformation = generateRotationMatrix(new THREE.Vector3(0, 1, 0), tankPivot, - rotationSpeed * deltaTime, false);
+
+			// Apply the composed transformation to the tankPivot
+			tankPivot.applyMatrix4(composedTransformation);
+		
+	}
+	else if (keys.KeyA) {
+		//generate a rotation matrix for the pivot around the parents' Y axis
+		tankPivot.applyMatrix4(generateRotationMatrix(new THREE.Vector3(0, 1, 0), tankPivot, rotationSpeed * deltaTime, false));
+	
+	}
+
+	if (keys.KeyW) {
+		const pivotYAxis = new THREE.Vector3();
+
+		// Get the direction of its local Y axis to apply bounds to it
+		tankPivot.matrixWorld.extractBasis(new THREE.Vector3(), pivotYAxis, new THREE.Vector3());
+		if (pivotYAxis.y < 0.7) {
+
+		//generate a rotation matrix for the pivot around its local X axis
+		const composedTransformation = generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, rotationSpeed * deltaTime, true);
+
+		// Apply the composed transformation to the tankPivot
+		tankPivot.applyMatrix4(composedTransformation);
+		}
+		else console.log("You're trying to go too high!");
+
+	}
+	else if (keys.KeyS) {
+		const pivotYAxis = new THREE.Vector3();
+
+		// Get the direction of its local Y axis
+		tankPivot.matrixWorld.extractBasis(new THREE.Vector3(), pivotYAxis, new THREE.Vector3());
+		if (pivotYAxis.y >= -0.05) {
+
+		//generate a rotation matrix for the pivot around its local X axis and apply it
+		tankPivot.applyMatrix4(generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, - rotationSpeed * deltaTime, true));
+		}	else console.log("You are trying to go too low!");
+	}
+	
+	if (keys.ArrowRight) {
+		//generate a rotation matrix for the tank around the around its Y axis
+		const composedTransformation = generateRotationMatrix(new THREE.Vector3(0, 1, 0), tank, - rotationSpeed * deltaTime, true);
+		//apply the rotation 
+		tank.applyMatrix4(composedTransformation);
+
+	}
+	else if (keys.ArrowLeft) {
+		//generate a rotation matrix for the tank around the around its Y axis and apply it
+		tank.applyMatrix4(generateRotationMatrix(new THREE.Vector3(0, 1, 0), tank, rotationSpeed * deltaTime, true));
+	}
+
+	if (keys.ArrowUp) {
+		//tank.position.z += 0.1 * deltaTime;
+		tank.applyMatrix4(generateTranslationMatrix(new THREE.Vector3(0, 0, 1), tank, - movementSpeed * deltaTime, true));
+	}
+	else if (keys.ArrowDown) {
+		//tank.position.z -= 0.1 * deltaTime;
+		tank.applyMatrix4(generateTranslationMatrix(new THREE.Vector3(0, 0, 1), tank, movementSpeed * deltaTime, true));
+	}
+
+	if (keys.Space) {
+		console.log("Shoot");
+	}
+}
+
+function generateRotationMatrix(axis, element, angle, localRotation) {
+
+	if (localRotation) {
+		//applying the quaternion to the axis of rotation (global) returns the axis of the element
+		axis = axis.applyQuaternion(element.quaternion).normalize();
+	} 
+
+	// Create a translation matrix to move the element to the origin before applying rotation
+	const translationToOrigin = new THREE.Matrix4().makeTranslation(
+		-element.position.x,
+		-element.position.y,
+		-element.position.z
+	)
+	// Create a translation matrix to move the element back to its original position after rotating
+	const translationBack = new THREE.Matrix4().makeTranslation(
+		element.position.x,
+		element.position.y,
+		element.position.z
+	)
+	// Generates the rotation matrix
+	const rotation = new THREE.Matrix4().makeRotationAxis(axis, angle);
+	//console.log("Rotation Matrix:", rotation.elements);
+
+	// Composes everything to return the rotation (+ translation) matrix to use
+	return new THREE.Matrix4()
+		.multiply(translationBack)
+		.multiply(rotation)
+		.multiply(translationToOrigin);
+
+}
+
+function generateTranslationMatrix(direction, element, distance, localCoordinates) {
+
+	if (localCoordinates) {
+		direction = direction.applyQuaternion(element.quaternion).normalize();
+	}
+	const translation = new THREE.Matrix4().makeTranslation(distance * direction.x, distance * direction.y, distance * direction.z);
+	//console.log("translation Matrix:", translation.elements);
+
+	// Create a rotation matrix around the local y-axis
+	return new THREE.Matrix4()
+		.multiply(translation)
+}
+
+//render and animation function
+let then = 0;
+
+function render(now) {
+	now *= 0.001;  // convert time to seconds
+	const deltaTime = now - then;
+	then = now;
+
+	handleInput(deltaTime);
 
 	renderer.render( scene, camera );
+	
+	requestAnimationFrame(render);
 
-	requestAnimationFrame( render );
 }
 requestAnimationFrame(render);
