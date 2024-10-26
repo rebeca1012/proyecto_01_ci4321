@@ -105,21 +105,8 @@ window.addEventListener('keyup', (event) => {
 //Input Handling
 const tankPivot = tank.children[0].children[0];
 
-// Create a translation matrix to move the pivot to the origin
-const translationToOrigin = new THREE.Matrix4().makeTranslation(
-	-tankPivot.position.x,
-	-tankPivot.position.y,
-	-tankPivot.position.z
-);
-
-// Create a translation matrix to move the pivot back to its original position
-const translationBack = new THREE.Matrix4().makeTranslation(
-    tankPivot.position.x,
-	tankPivot.position.y,
-	tankPivot.position.z
-);
-
 const rotationSpeed = 1;
+const movementSpeed = 1;
 function handleInput(deltaTime) {
 
 	if (keys.KeyD) {
@@ -130,8 +117,6 @@ function handleInput(deltaTime) {
 
 			// Apply the composed transformation to the tankPivot
 			tankPivot.applyMatrix4(composedTransformation);
-	
-		
 		
 	}
 	else if (keys.KeyA) {
@@ -169,17 +154,24 @@ function handleInput(deltaTime) {
 	}
 	
 	if (keys.ArrowRight) {
-		tank.rotation.y += rotationSpeed * deltaTime;
+		//generate a rotation matrix for the tank around the around its Y axis
+		const composedTransformation = generateRotationMatrix(new THREE.Vector3(0, 1, 0), tank, - rotationSpeed * deltaTime, true);
+		//apply the rotation 
+		tank.applyMatrix4(composedTransformation);
+
 	}
 	else if (keys.ArrowLeft) {
-		tank.rotation.y -= rotationSpeed * deltaTime;
+		//generate a rotation matrix for the tank around the around its Y axis and apply it
+		tank.applyMatrix4(generateRotationMatrix(new THREE.Vector3(0, 1, 0), tank, rotationSpeed * deltaTime, true));
 	}
 
 	if (keys.ArrowUp) {
-		tank.position.z += 0.1 * deltaTime;
+		//tank.position.z += 0.1 * deltaTime;
+		tank.applyMatrix4(generateTranslationMatrix(new THREE.Vector3(0, 0, 1), tank, - movementSpeed * deltaTime, true));
 	}
 	else if (keys.ArrowDown) {
-		tank.position.z -= 0.1 * deltaTime;
+		//tank.position.z -= 0.1 * deltaTime;
+		tank.applyMatrix4(generateTranslationMatrix(new THREE.Vector3(0, 0, 1), tank, movementSpeed * deltaTime, true));
 	}
 
 	if (keys.Space) {
@@ -187,24 +179,48 @@ function handleInput(deltaTime) {
 	}
 }
 
-function generateRotationMatrix(axis, element, angle, localCoordinates) {
-	
-	let localAxis = new THREE.Vector3()
+function generateRotationMatrix(axis, element, angle, localRotation) {
+
+	if (localRotation) {
+		//applying the quaternion to the axis of rotation (global) returns the axis of the element
+		axis = axis.applyQuaternion(element.quaternion).normalize();
+	} 
+
+	// Create a translation matrix to move the element to the origin before applying rotation
+	const translationToOrigin = new THREE.Matrix4().makeTranslation(
+		-element.position.x,
+		-element.position.y,
+		-element.position.z
+	)
+	// Create a translation matrix to move the element back to its original position after rotating
+	const translationBack = new THREE.Matrix4().makeTranslation(
+		element.position.x,
+		element.position.y,
+		element.position.z
+	)
+	// Generates the rotation matrix
+	const rotation = new THREE.Matrix4().makeRotationAxis(axis, angle);
+	//console.log("Rotation Matrix:", rotation.elements);
+
+	// Composes everything to return the rotation (+ translation) matrix to use
+	return new THREE.Matrix4()
+		.multiply(translationBack)
+		.multiply(rotation)
+		.multiply(translationToOrigin);
+
+}
+
+function generateTranslationMatrix(direction, element, distance, localCoordinates) {
 
 	if (localCoordinates) {
-		localAxis = axis.applyQuaternion(element.quaternion).normalize();
-	} else {
-		localAxis = axis;
+		direction = direction.applyQuaternion(element.quaternion).normalize();
 	}
-	const upRotation = new THREE.Matrix4().makeRotationAxis(localAxis, angle);
-	//console.log("Rotation Matrix:", upRotation.elements);
+	const translation = new THREE.Matrix4().makeTranslation(distance * direction.x, distance * direction.y, distance * direction.z);
+	//console.log("translation Matrix:", translation.elements);
 
 	// Create a rotation matrix around the local y-axis
 	return new THREE.Matrix4()
-		.multiply(translationBack)
-		.multiply(upRotation)
-		.multiply(translationToOrigin);
-
+		.multiply(translation)
 }
 
 //render and animation function
