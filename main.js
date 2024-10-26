@@ -142,24 +142,31 @@ function handleInput(deltaTime) {
 	}
 
 	if (keys.KeyW) {
+		const pivotYAxis = new THREE.Vector3();
 
-		//if (tankPivot.rotation.x < - 0.5 && tankPivot.rotation.x > - Math.PI + 1) {
+		// Get the direction of the local Y axis
+		tankPivot.matrixWorld.extractBasis(new THREE.Vector3(), pivotYAxis, new THREE.Vector3());
+		console.log("Y Axis:", pivotYAxis);
+		if (pivotYAxis.y < 0.7) {
 		//generate a rotation matrix for the pivot around its local X axis
 		const composedTransformation = generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, rotationSpeed * deltaTime);
 
 		// Apply the composed transformation to the tankPivot
 		tankPivot.applyMatrix4(composedTransformation);
-		//}
-		//else console.log("No brother, no.");
+		}
+		else console.log("No brother, no.");
 
 	}
 	else if (keys.KeyS) {
+		const pivotYAxis = new THREE.Vector3();
 
-		//if (tankPivot.rotation.x > - Math.PI/2) {
+		// Get the direction of the local Y axis
+		tankPivot.matrixWorld.extractBasis(new THREE.Vector3(), pivotYAxis, new THREE.Vector3());
+		console.log("Y Axis:", pivotYAxis);
+		if (pivotYAxis.y >= 0) {
 		//generate a rotation matrix for the pivot around its local X axis and apply it
 		tankPivot.applyMatrix4(generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, - rotationSpeed * deltaTime));
-	//}
-	//	else console.log("That aint it, mate");
+		}	else console.log("That aint it, mate");
 	}
 	
 	if (keys.ArrowRight) {
