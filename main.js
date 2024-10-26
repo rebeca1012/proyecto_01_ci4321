@@ -123,50 +123,49 @@ const rotationSpeed = 1;
 function handleInput(deltaTime) {
 
 	if (keys.KeyD) {
-		//tankPivot.rotation.z -= rotationSpeed * deltaTime;
-		//generate a rotation matrix for the pivot around its local Z axis
+
+		//generate a rotation matrix for the pivot around the parents' Y axis
 		
-			const composedTransformation = generateRotationMatrix(new THREE.Vector3(0, 0, 1), tankPivot, - rotationSpeed * deltaTime);
+			const composedTransformation = generateRotationMatrix(new THREE.Vector3(0, 1, 0), tankPivot, - rotationSpeed * deltaTime, false);
 
 			// Apply the composed transformation to the tankPivot
 			tankPivot.applyMatrix4(composedTransformation);
-			
+	
 		
 		
 	}
 	else if (keys.KeyA) {
-		
-		//generate a rotation matrix for the pivot around its local Z axis and apply it
-		tankPivot.applyMatrix4(generateRotationMatrix(new THREE.Vector3(0, 0, 1), tankPivot, rotationSpeed * deltaTime));
+		//generate a rotation matrix for the pivot around the parents' Y axis
+		tankPivot.applyMatrix4(generateRotationMatrix(new THREE.Vector3(0, 1, 0), tankPivot, rotationSpeed * deltaTime, false));
 	
 	}
 
 	if (keys.KeyW) {
 		const pivotYAxis = new THREE.Vector3();
 
-		// Get the direction of the local Y axis
+		// Get the direction of its local Y axis to apply bounds to it
 		tankPivot.matrixWorld.extractBasis(new THREE.Vector3(), pivotYAxis, new THREE.Vector3());
-		console.log("Y Axis:", pivotYAxis);
 		if (pivotYAxis.y < 0.7) {
+
 		//generate a rotation matrix for the pivot around its local X axis
-		const composedTransformation = generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, rotationSpeed * deltaTime);
+		const composedTransformation = generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, rotationSpeed * deltaTime, true);
 
 		// Apply the composed transformation to the tankPivot
 		tankPivot.applyMatrix4(composedTransformation);
 		}
-		else console.log("No brother, no.");
+		else console.log("You're trying to go too high!");
 
 	}
 	else if (keys.KeyS) {
 		const pivotYAxis = new THREE.Vector3();
 
-		// Get the direction of the local Y axis
+		// Get the direction of its local Y axis
 		tankPivot.matrixWorld.extractBasis(new THREE.Vector3(), pivotYAxis, new THREE.Vector3());
-		console.log("Y Axis:", pivotYAxis);
-		if (pivotYAxis.y >= 0) {
+		if (pivotYAxis.y >= -0.05) {
+
 		//generate a rotation matrix for the pivot around its local X axis and apply it
-		tankPivot.applyMatrix4(generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, - rotationSpeed * deltaTime));
-		}	else console.log("That aint it, mate");
+		tankPivot.applyMatrix4(generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, - rotationSpeed * deltaTime, true));
+		}	else console.log("You are trying to go too low!");
 	}
 	
 	if (keys.ArrowRight) {
@@ -188,8 +187,15 @@ function handleInput(deltaTime) {
 	}
 }
 
-function generateRotationMatrix(axis, element, angle) {
-	const localAxis = axis.applyQuaternion(element.quaternion).normalize();
+function generateRotationMatrix(axis, element, angle, localCoordinates) {
+	
+	let localAxis = new THREE.Vector3()
+
+	if (localCoordinates) {
+		localAxis = axis.applyQuaternion(element.quaternion).normalize();
+	} else {
+		localAxis = axis;
+	}
 	const upRotation = new THREE.Matrix4().makeRotationAxis(localAxis, angle);
 	//console.log("Rotation Matrix:", upRotation.elements);
 
