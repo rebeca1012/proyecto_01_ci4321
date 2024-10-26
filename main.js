@@ -52,7 +52,7 @@ function makeTank(tankColor, tankBasePosition){
 
 	// putting the scenegraph (tree) together
 	tankPivot.add(tankTurret);
-	tankPivot.rotation.x = Math.PI / 2; //turret starts in horizontal position
+	tankPivot.rotation.x = - Math.PI / 2; //turret starts in horizontal position
 	tankPlatform.add(tankPivot)
 	tankBase.add(tankPlatform);
 	
@@ -68,15 +68,10 @@ function makeTank(tankColor, tankBasePosition){
 
 //assigning tank color and base position
 const tankColor = 0xbbeeff;
-const tankBasePosition = new THREE.Vector3(0, 0, 1);
+const tankBasePosition = new THREE.Vector3(0, 0, 0);
 const tank = makeTank(tankColor, tankBasePosition);
 scene.add(tank);
 
-/*
-const material = new THREE.MeshPhongMaterial( { color: 0xbbeeff } );
-const cube = new THREE.Mesh( geometry, material );   
-scene.add( cube );
-*/
 camera.position.z = 5;
 camera.position.y = 1;
 
@@ -106,73 +101,65 @@ window.addEventListener('keyup', (event) => {
 		keys[event.code] = false;
 	}
 });
-// Store the initial rotation matrix of the turret
 
 //Input Handling
 const tankPivot = tank.children[0].children[0];
-const initialRotationMatrix = tankPivot.matrix.clone();
+
+// Create a translation matrix to move the pivot to the origin
+const translationToOrigin = new THREE.Matrix4().makeTranslation(
+	-tankPivot.position.x,
+	-tankPivot.position.y,
+	-tankPivot.position.z
+);
+
+// Create a translation matrix to move the pivot back to its original position
+const translationBack = new THREE.Matrix4().makeTranslation(
+    tankPivot.position.x,
+	tankPivot.position.y,
+	tankPivot.position.z
+);
+
 const rotationSpeed = 1;
 function handleInput(deltaTime) {
 
 	if (keys.KeyD) {
-		tankPivot.rotation.z -= rotationSpeed * deltaTime;
+		//tankPivot.rotation.z -= rotationSpeed * deltaTime;
+		//generate a rotation matrix for the pivot around its local Z axis
+		
+			const composedTransformation = generateRotationMatrix(new THREE.Vector3(0, 0, 1), tankPivot, - rotationSpeed * deltaTime);
+
+			// Apply the composed transformation to the tankPivot
+			tankPivot.applyMatrix4(composedTransformation);
+			
+		
+		
 	}
 	else if (keys.KeyA) {
-		tankPivot.rotation.z += rotationSpeed * deltaTime;
+		
+		//generate a rotation matrix for the pivot around its local Z axis and apply it
+		tankPivot.applyMatrix4(generateRotationMatrix(new THREE.Vector3(0, 0, 1), tankPivot, rotationSpeed * deltaTime));
+	
 	}
 
 	if (keys.KeyW) {
-		
-		//tankPivot.rotation.x -= rotationSpeed * deltaTime;
-		console.log("Rotating turret up");
-    
-      	// Reset tankPivot to its original rotation
-		tankPivot.matrix.copy(initialRotationMatrix);
-		
-		// Create a translation matrix to move the pivot to the origin
-		const translationToOrigin = new THREE.Matrix4().makeTranslation(
-			-tankPivot.position.x,
-			-tankPivot.position.y,
-			-tankPivot.position.z
-		);
 
-    // Create a translation matrix to move the pivot back to its original position
-    	const translationBack = new THREE.Matrix4().makeTranslation(
-        	tankPivot.position.x,
-        	tankPivot.position.y,
-        	tankPivot.position.z
-    	);
-		
-		// Create a rotation matrix around the local x-axis
-		//const upRotation = new THREE.Matrix4().makeRotationX(-rotationSpeed * deltaTime);
-		const localXAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(tankPivot.quaternion).normalize();
-		const upRotation = new THREE.Matrix4().makeRotationAxis(localXAxis, -rotationSpeed * deltaTime);
-		console.log("Rotation Matrix:", upRotation.elements);
-		// Apply the rotation matrix to the tankPivot
-		//tankPivot.applyMatrix4(upRotation);
+		//if (tankPivot.rotation.x < - 0.5 && tankPivot.rotation.x > - Math.PI + 1) {
+		//generate a rotation matrix for the pivot around its local X axis
+		const composedTransformation = generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, rotationSpeed * deltaTime);
 
-		// Create a rotation matrix around the local y-axis
-      	//const upRotation = new THREE.Matrix4().makeRotationX(- rotationSpeed * deltaTime);
-
-		const composedTransformation = new THREE.Matrix4()
-        	.multiply(translationBack)
-        	.multiply(upRotation)
-        	.multiply(translationToOrigin);
-
-	  	
-		//tankPivot.applyMatrix4(translationToOrigin);
-
-
-		//tankPivot.applyMatrix4(translationBack);
-
-// Apply the composed transformation to the tankPivot
+		// Apply the composed transformation to the tankPivot
 		tankPivot.applyMatrix4(composedTransformation);
-		
-
+		//}
+		//else console.log("No brother, no.");
 
 	}
 	else if (keys.KeyS) {
-		tankPivot.rotation.x += rotationSpeed * deltaTime;
+
+		//if (tankPivot.rotation.x > - Math.PI/2) {
+		//generate a rotation matrix for the pivot around its local X axis and apply it
+		tankPivot.applyMatrix4(generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, - rotationSpeed * deltaTime));
+	//}
+	//	else console.log("That aint it, mate");
 	}
 	
 	if (keys.ArrowRight) {
@@ -194,20 +181,17 @@ function handleInput(deltaTime) {
 	}
 }
 
-function rotateTurret(turret, axis, angle){
-	switch (axis){
-		case 'x':
-			const upRotation = new THREE.Matrix4().makeRotationX(angle);
-			turret.matrix.multiply(upRotation);
-			turret.matrixWorldNedsUpdate = true;
-			break;
-		case 'y':
-			turret.rotation.y += angle;
-			break;
-		case 'z':
-			turret.rotation.z += angle;
-			break;
-	}
+function generateRotationMatrix(axis, element, angle) {
+	const localAxis = axis.applyQuaternion(element.quaternion).normalize();
+	const upRotation = new THREE.Matrix4().makeRotationAxis(localAxis, angle);
+	//console.log("Rotation Matrix:", upRotation.elements);
+
+	// Create a rotation matrix around the local y-axis
+	return new THREE.Matrix4()
+		.multiply(translationBack)
+		.multiply(upRotation)
+		.multiply(translationToOrigin);
+
 }
 
 //render and animation function
