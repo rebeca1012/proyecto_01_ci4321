@@ -1,7 +1,8 @@
 //import * as THREE from 'three';
 //We import the three library for a CDN for it to work with VSCode Live Server
 import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
-
+import { addFloor } from './floor';
+import { addSky } from './sky'
 //defining scene, camera and renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
@@ -71,6 +72,11 @@ const tankColor = 0xbbeeff;
 const tankBasePosition = new THREE.Vector3(0, 0, 0);
 const tank = makeTank(tankColor, tankBasePosition);
 scene.add(tank);
+
+
+// Add the floor to the scene
+addFloor(scene);
+addSky(scene, renderer, camera);
 
 camera.position.z = 5;
 camera.position.y = 1;
