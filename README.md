@@ -23,3 +23,27 @@ Una vez instaladas las dependencias, ejecutar en el mismo terminal:
 `npx vite`
 
 Ingresar en un navegador a http://localhost:5173/ para interactuar con el programa.
+
+## Controles para el programa
+
+Flecha hacia arriba: mueve el tanque hacia adelante
+
+Flecha hacia abajo: mueve el tanque hacia atrás
+
+Flecha derecha: mueve el tanque a la derecha
+
+Flecha izquierda: mueve el tanque a la izquierda
+
+Tecla W: eleva el cañón
+
+Tecla S: baja el cañón
+
+Tecla D: gira la torreta hacia la derecha
+
+Tecla A: gira la torreta hacia la izquierda
+
+Barra espaciadora: dispara un proyectil
+
+Tecla Q: cambia el tipo de proyectil
+
+Tecla E: cambia el tipo de proyectil
