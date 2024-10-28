@@ -54,6 +54,13 @@ class Projectile {
 		this.mesh.position.add(this.velocity.clone().multiplyScalar(deltaTime));
 	}
 }
+class parabolicProjectile extends Projectile {
+	update(deltaTime) {
+		// position += velocity*time
+		this.mesh.position.add(this.velocity.clone().multiplyScalar(deltaTime));
+		this.mesh.position.y += 0.1 * Math.sin(this.mesh.position.x);
+	}
+}
 
 //Projectile pooling
 const projectiles = [];
@@ -277,8 +284,17 @@ const keys = {
 	KeyA: false,
 	KeyS: false,
 	KeyD: false,
-	Space: false //shoot
+	Space: false, //shoot
+	KeyQ: false, //switch weapon
+	KeyE: false
 };
+// weapons
+const weapons = ["standard", "parabolic"];
+let index = 0;
+
+//Switching variables
+let lastSwitchTime = 0;
+const switchCooldown = 500; // Cooldown duration in milliseconds
 
 // Cooldown variables
 let lastShotTime = 0;
@@ -375,7 +391,6 @@ function handleInput(deltaTime) {
 	if (keys.Space){
 		const currentTime = Date.now();
 		if (currentTime - lastShotTime > shotCooldown) {
-		console.log("Shoot");
 
 		const firingPoint = new THREE.Vector3();
 		tankTurretEnd.getWorldPosition(firingPoint);
@@ -389,6 +404,27 @@ function handleInput(deltaTime) {
 		fireProjectile(firingPoint, firingDirection);
 
 		lastShotTime = currentTime;
+		}
+	}
+
+	if (keys.KeyQ) {
+		
+		const currentTime = Date.now();
+		if (currentTime - lastSwitchTime > switchCooldown) {
+			index = (index - 1) % weapons.length;
+			if (index < 0) index = weapons.length - 1;
+
+			console.log("Switching to weapon:", weapons[index]);
+			lastSwitchTime = currentTime;
+		}
+	}
+
+	if (keys.KeyE) {
+		const currentTime = Date.now();
+		if (currentTime - lastSwitchTime > switchCooldown) {
+			index = (index + 1) % weapons.length;
+			console.log("Switching to weapon:", weapons[index]);
+			lastSwitchTime = currentTime;
 		}
 	}
 }
@@ -438,7 +474,27 @@ function generateTranslationMatrix(direction, element, distance, localCoordinate
 }
 
 function fireProjectile(position, direction) {
-	const projectile = new Projectile(position, direction, projectileSpeed);
+
+	const maxProjectiles = 5;
+
+	// If there are too many projectile, delete the oldest one
+	if (projectiles.length >= maxProjectiles) {
+		const projectile = projectiles.shift();
+		scene.remove(projectile.mesh);
+	}
+
+	// Create a new projectile and add it to the scene
+	let projectile;
+
+	switch (index) {
+		case 0:
+			projectile = new Projectile(position, direction, projectileSpeed);
+			break;
+		case 1:
+			projectile = new parabolicProjectile(position, direction, projectileSpeed);
+			break;
+	}
+
 	scene.add(projectile.mesh);
 	projectiles.push(projectile);
 }
