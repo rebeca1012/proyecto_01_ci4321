@@ -34,6 +34,37 @@ function makeInstance(geometry, color, pos) {
 	return instance;
 }
 
+//Projectile class
+class Projectile {
+	// the projectile will be a standart sphere with the specified
+	//position, direction and speed
+	constructor(position, direction, speed) {
+
+		const geometry = new THREE.SphereGeometry(0.075, 8, 8);
+		const material = new THREE.MeshStandardMaterial({color: 0x333333});
+		this.mesh = new THREE.Mesh(geometry, material);
+
+		this.mesh.position.copy(position);
+		this.velocity = direction.normalize().multiplyScalar(speed);
+	}
+
+	//function to update the projectile position
+	update(deltaTime) {
+		// position += velocity*time
+		this.mesh.position.add(this.velocity.clone().multiplyScalar(deltaTime));
+	}
+}
+class parabolicProjectile extends Projectile {
+	update(deltaTime) {
+		// position += velocity*time
+		this.mesh.position.add(this.velocity.clone().multiplyScalar(deltaTime));
+		this.mesh.position.y += 0.1 * Math.sin(this.mesh.position.x);
+	}
+}
+
+//Projectile pooling
+const projectiles = [];
+
 //function that creates a basic tank of the specified color in the specified position
 function makeTank(tankColor, tankBasePosition){
 	//creating a rectangular tank base
@@ -46,21 +77,32 @@ function makeTank(tankColor, tankBasePosition){
 	const turretGeometry = new THREE.CylinderGeometry(0.18, 0.18, 1.3, 16);
 
 	//creating respective meshes
+	//each position will be relative to its parent in the scenegraph
 	const tankBase = makeInstance(baseGeometry, tankColor, tankBasePosition);
-	const tankPlatform = makeInstance(platformGeometry, tankColor, {x:0, y:0, z:0});
-	const tankPivot = makeInstance(tankPivotGeometry, tankColor, {x:0, y:0, z:0});
-	const tankTurret = makeInstance(turretGeometry,tankColor, {x: 0, y: 0, z: 0});
+	const tankPlatform = makeInstance(platformGeometry, tankColor, {x:0, y:0.6, z:0});
+	const tankPivot = makeInstance(tankPivotGeometry, tankColor, {x:0, y:0.6, z:0});
+	const tankTurret = makeInstance(turretGeometry,tankColor, {x: 0, y: 0.5, z: 0});
+
+	//mounting point for projectile firing
+	//const turretEnd = makeInstance(new THREE.SphereGeometry(0.05, 8, 8), 0x00ff00, {x: 0, y: 0.65, z: 0});
+	const turretEnd = new THREE.Object3D();
+	turretEnd.position.set(0, 0.65, 0);
+
+	//rotating the pivot so initially the turret will be parallel to the ground
+	const initialRotationMatrix = generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, -Math.PI / 2, true);
+	tankPivot.applyMatrix4(initialRotationMatrix);
+	
+	//compensating the previous rotation in the mounting point for
+	//correct projectile firing
+	const rotationMatrix = generateRotationMatrix(new THREE.Vector3(1, 0, 0), turretEnd, -Math.PI / 2, true);
+	turretEnd.applyMatrix4(rotationMatrix);
+	
+	tankTurret.add(turretEnd);
 
 	// putting the scenegraph (tree) together
 	tankPivot.add(tankTurret);
-	tankPivot.rotation.x = - Math.PI / 2; //turret starts in horizontal position
 	tankPlatform.add(tankPivot)
 	tankBase.add(tankPlatform);
-	
-	//setting position (each position will be relative to its parent in the scenegraph)
-	tankPlatform.position.copy(new THREE.Vector3(0, 0.6, 0));
-	tankPivot.position.copy(new THREE.Vector3(0, 0.6, 0));
-	tankTurret.position.copy({x: 0, y: 0.5, z: 0});
 
 	tankBase.pivot = tankPivot; // I want to access once the tank is made
 
@@ -202,7 +244,7 @@ function createCircularTarget(position, radius, depth) {
   
 
 //assigning tank color and base position
-const tankColor = 0xbbeeff;
+const tankColor = 0x5B53FF; 
 const tankBasePosition = new THREE.Vector3(0, 0, 0);
 const tank = makeTank(tankColor, tankBasePosition);
 scene.add(tank);
@@ -242,8 +284,21 @@ const keys = {
 	KeyA: false,
 	KeyS: false,
 	KeyD: false,
-	Space: false //shoot
+	Space: false, //shoot
+	KeyQ: false, //switch weapon
+	KeyE: false
 };
+// weapons
+const weapons = ["standard", "parabolic"];
+let index = 0;
+
+//Switching variables
+let lastSwitchTime = 0;
+const switchCooldown = 500; // Cooldown duration in milliseconds
+
+// Cooldown variables
+let lastShotTime = 0;
+const shotCooldown = 750; // Cooldown duration in milliseconds
 
 //Input listener
 window.addEventListener('keydown', (event) => {
@@ -260,9 +315,12 @@ window.addEventListener('keyup', (event) => {
 
 //Input Handling
 const tankPivot = tank.children[0].children[0];
+const tankTurretEnd = tankPivot.children[0].children[0];
 
 const rotationSpeed = 1;
 const movementSpeed = 1;
+const projectileSpeed = 5;
+
 function handleInput(deltaTime) {
 
 	if (keys.KeyD) {
@@ -302,7 +360,7 @@ function handleInput(deltaTime) {
 
 		// Get the direction of its local Y axis
 		tankPivot.matrixWorld.extractBasis(new THREE.Vector3(), pivotYAxis, new THREE.Vector3());
-		if (pivotYAxis.y >= -0.05) {
+		if (pivotYAxis.y >= -0.1) {
 
 		//generate a rotation matrix for the pivot around its local X axis and apply it
 		tankPivot.applyMatrix4(generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, - rotationSpeed * deltaTime, true));
@@ -330,8 +388,44 @@ function handleInput(deltaTime) {
 		tank.applyMatrix4(generateTranslationMatrix(new THREE.Vector3(0, 0, 1), tank, movementSpeed * deltaTime, true));
 	}
 
-	if (keys.Space) {
-		console.log("Shoot");
+	if (keys.Space){
+		const currentTime = Date.now();
+		if (currentTime - lastShotTime > shotCooldown) {
+
+		const firingPoint = new THREE.Vector3();
+		tankTurretEnd.getWorldPosition(firingPoint);
+		
+		const firingDirection = new THREE.Vector3();
+		tankTurretEnd.getWorldDirection(firingDirection);
+
+		//We need to rotate the firingDirection to match the turret's rotation
+
+		//Create and Fire projectile from the firing point
+		fireProjectile(firingPoint, firingDirection);
+
+		lastShotTime = currentTime;
+		}
+	}
+
+	if (keys.KeyQ) {
+		
+		const currentTime = Date.now();
+		if (currentTime - lastSwitchTime > switchCooldown) {
+			index = (index - 1) % weapons.length;
+			if (index < 0) index = weapons.length - 1;
+
+			console.log("Switching to weapon:", weapons[index]);
+			lastSwitchTime = currentTime;
+		}
+	}
+
+	if (keys.KeyE) {
+		const currentTime = Date.now();
+		if (currentTime - lastSwitchTime > switchCooldown) {
+			index = (index + 1) % weapons.length;
+			console.log("Switching to weapon:", weapons[index]);
+			lastSwitchTime = currentTime;
+		}
 	}
 }
 
@@ -379,6 +473,41 @@ function generateTranslationMatrix(direction, element, distance, localCoordinate
 		.multiply(translation)
 }
 
+function fireProjectile(position, direction) {
+
+	const maxProjectiles = 5;
+
+	// If there are too many projectile, delete the oldest one
+	if (projectiles.length >= maxProjectiles) {
+		const projectile = projectiles.shift();
+		scene.remove(projectile.mesh);
+	}
+
+	// Create a new projectile and add it to the scene
+	let projectile;
+
+	switch (index) {
+		case 0:
+			projectile = new Projectile(position, direction, projectileSpeed);
+			break;
+		case 1:
+			projectile = new parabolicProjectile(position, direction, projectileSpeed);
+			break;
+	}
+
+	scene.add(projectile.mesh);
+	projectiles.push(projectile);
+}
+
+//this function updates elements that dont require user input to work
+function updateElements(deltaTime){
+
+	//projectiles
+	projectiles.forEach(projectile => {
+		projectile.update(deltaTime);
+	});
+
+}
 //render and animation function
 let then = 0;
 
@@ -388,6 +517,9 @@ function render(now) {
 	then = now;
 
 	handleInput(deltaTime);
+	
+	//things that dont require input
+	updateElements(deltaTime);
 
 	renderer.render( scene, camera );
 	
