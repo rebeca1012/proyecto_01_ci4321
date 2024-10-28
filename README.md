@@ -10,6 +10,10 @@ En este respositorio se encuentra el primer proyecto de la materia Computación 
 ## Tecnologías usadas
 Se utilizó ThreeJS para el desarrollo de este proyecto. Se usó Vite para facilitar la creación del proyecto y manejar más fácilmente las dependencias.
 
+## Tecnologías usadas
+
+Sistema operativo usado para desarrollar: Windows
+
 ## Correr el proyecto
 
 Para correr el proyecto se debe abrir un terminal dentro de la carpeta del proyecto. 
