@@ -40,8 +40,8 @@ class Projectile {
 	//position, direction and speed
 	constructor(position, direction, speed) {
 
-		const geometry = THREE.SphereGeometry(0.05, 8, 8);
-		const material = new THREE.MeshStandardMaterial({color: 0xff0000});
+		const geometry = new THREE.SphereGeometry(0.075, 8, 8);
+		const material = new THREE.MeshStandardMaterial({color: 0x333333});
 		this.mesh = new THREE.Mesh(geometry, material);
 
 		this.mesh.position.copy(position);
@@ -70,21 +70,32 @@ function makeTank(tankColor, tankBasePosition){
 	const turretGeometry = new THREE.CylinderGeometry(0.18, 0.18, 1.3, 16);
 
 	//creating respective meshes
+	//each position will be relative to its parent in the scenegraph
 	const tankBase = makeInstance(baseGeometry, tankColor, tankBasePosition);
-	const tankPlatform = makeInstance(platformGeometry, tankColor, {x:0, y:0, z:0});
-	const tankPivot = makeInstance(tankPivotGeometry, tankColor, {x:0, y:0, z:0});
-	const tankTurret = makeInstance(turretGeometry,tankColor, {x: 0, y: 0, z: 0});
+	const tankPlatform = makeInstance(platformGeometry, tankColor, {x:0, y:0.6, z:0});
+	const tankPivot = makeInstance(tankPivotGeometry, tankColor, {x:0, y:0.6, z:0});
+	const tankTurret = makeInstance(turretGeometry,tankColor, {x: 0, y: 0.5, z: 0});
+
+	//mounting point for projectile firing
+	//const turretEnd = makeInstance(new THREE.SphereGeometry(0.05, 8, 8), 0x00ff00, {x: 0, y: 0.65, z: 0});
+	const turretEnd = new THREE.Object3D();
+	turretEnd.position.set(0, 0.65, 0);
+
+	//rotating the pivot so initially the turret will be parallel to the ground
+	const initialRotationMatrix = generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, -Math.PI / 2, true);
+	tankPivot.applyMatrix4(initialRotationMatrix);
+	
+	//compensating the previous rotation in the mounting point for
+	//correct projectile firing
+	const rotationMatrix = generateRotationMatrix(new THREE.Vector3(1, 0, 0), turretEnd, -Math.PI / 2, true);
+	turretEnd.applyMatrix4(rotationMatrix);
+	
+	tankTurret.add(turretEnd);
 
 	// putting the scenegraph (tree) together
 	tankPivot.add(tankTurret);
-	tankPivot.rotation.x = - Math.PI / 2; //turret starts in horizontal position
 	tankPlatform.add(tankPivot)
 	tankBase.add(tankPlatform);
-	
-	//setting position (each position will be relative to its parent in the scenegraph)
-	tankPlatform.position.copy(new THREE.Vector3(0, 0.6, 0));
-	tankPivot.position.copy(new THREE.Vector3(0, 0.6, 0));
-	tankTurret.position.copy({x: 0, y: 0.5, z: 0});
 
 	tankBase.pivot = tankPivot; // I want to access once the tank is made
 
@@ -226,7 +237,7 @@ function createCircularTarget(position, radius, depth) {
   
 
 //assigning tank color and base position
-const tankColor = 0xbbeeff;
+const tankColor = 0x5B53FF; 
 const tankBasePosition = new THREE.Vector3(0, 0, 0);
 const tank = makeTank(tankColor, tankBasePosition);
 scene.add(tank);
@@ -288,9 +299,12 @@ window.addEventListener('keyup', (event) => {
 
 //Input Handling
 const tankPivot = tank.children[0].children[0];
+const tankTurretEnd = tankPivot.children[0].children[0];
 
 const rotationSpeed = 1;
 const movementSpeed = 1;
+const projectileSpeed = 5;
+
 function handleInput(deltaTime) {
 
 	if (keys.KeyD) {
@@ -330,7 +344,7 @@ function handleInput(deltaTime) {
 
 		// Get the direction of its local Y axis
 		tankPivot.matrixWorld.extractBasis(new THREE.Vector3(), pivotYAxis, new THREE.Vector3());
-		if (pivotYAxis.y >= -0.05) {
+		if (pivotYAxis.y >= -0.1) {
 
 		//generate a rotation matrix for the pivot around its local X axis and apply it
 		tankPivot.applyMatrix4(generateRotationMatrix(new THREE.Vector3(1, 0, 0), tankPivot, - rotationSpeed * deltaTime, true));
@@ -362,10 +376,21 @@ function handleInput(deltaTime) {
 		const currentTime = Date.now();
 		if (currentTime - lastShotTime > shotCooldown) {
 		console.log("Shoot");
+
+		const firingPoint = new THREE.Vector3();
+		tankTurretEnd.getWorldPosition(firingPoint);
+		
+		const firingDirection = new THREE.Vector3();
+		tankTurretEnd.getWorldDirection(firingDirection);
+
+		//We need to rotate the firingDirection to match the turret's rotation
+
+		//Create and Fire projectile from the firing point
+		fireProjectile(firingPoint, firingDirection);
+
 		lastShotTime = currentTime;
 		}
 	}
-
 }
 
 function generateRotationMatrix(axis, element, angle, localRotation) {
@@ -412,6 +437,21 @@ function generateTranslationMatrix(direction, element, distance, localCoordinate
 		.multiply(translation)
 }
 
+function fireProjectile(position, direction) {
+	const projectile = new Projectile(position, direction, projectileSpeed);
+	scene.add(projectile.mesh);
+	projectiles.push(projectile);
+}
+
+//this function updates elements that dont require user input to work
+function updateElements(deltaTime){
+
+	//projectiles
+	projectiles.forEach(projectile => {
+		projectile.update(deltaTime);
+	});
+
+}
 //render and animation function
 let then = 0;
 
@@ -421,6 +461,9 @@ function render(now) {
 	then = now;
 
 	handleInput(deltaTime);
+	
+	//things that dont require input
+	updateElements(deltaTime);
 
 	renderer.render( scene, camera );
 	
