@@ -34,6 +34,30 @@ function makeInstance(geometry, color, pos) {
 	return instance;
 }
 
+//Projectile class
+class Projectile {
+	// the projectile will be a standart sphere with the specified
+	//position, direction and speed
+	constructor(position, direction, speed) {
+
+		const geometry = THREE.SphereGeometry(0.05, 8, 8);
+		const material = new THREE.MeshStandardMaterial({color: 0xff0000});
+		this.mesh = new THREE.Mesh(geometry, material);
+
+		this.mesh.position.copy(position);
+		this.velocity = direction.normalize().multiplyScalar(speed);
+	}
+
+	//function to update the projectile position
+	update(deltaTime) {
+		// position += velocity*time
+		this.mesh.position.add(this.velocity.clone().multiplyScalar(deltaTime));
+	}
+}
+
+//Projectile pooling
+const projectiles = [];
+
 //function that creates a basic tank of the specified color in the specified position
 function makeTank(tankColor, tankBasePosition){
 	//creating a rectangular tank base
@@ -245,6 +269,10 @@ const keys = {
 	Space: false //shoot
 };
 
+// Cooldown variables
+let lastShotTime = 0;
+const shotCooldown = 750; // Cooldown duration in milliseconds
+
 //Input listener
 window.addEventListener('keydown', (event) => {
 	if (keys.hasOwnProperty(event.code)) {
@@ -330,9 +358,14 @@ function handleInput(deltaTime) {
 		tank.applyMatrix4(generateTranslationMatrix(new THREE.Vector3(0, 0, 1), tank, movementSpeed * deltaTime, true));
 	}
 
-	if (keys.Space) {
+	if (keys.Space){
+		const currentTime = Date.now();
+		if (currentTime - lastShotTime > shotCooldown) {
 		console.log("Shoot");
+		lastShotTime = currentTime;
+		}
 	}
+
 }
 
 function generateRotationMatrix(axis, element, angle, localRotation) {
