@@ -41,7 +41,7 @@ class Projectile {
 	constructor(position, direction, speed) {
 
 		const geometry = new THREE.SphereGeometry(0.075, 8, 8);
-		const material = new THREE.MeshStandardMaterial({color: 0x333333});
+		const material = new THREE.MeshStandardMaterial({color: 0xC0C0C0});
 		this.mesh = new THREE.Mesh(geometry, material);
 
 		this.mesh.position.copy(position);
@@ -55,10 +55,31 @@ class Projectile {
 	}
 }
 class parabolicProjectile extends Projectile {
+	
+	//We will use these to calculate the speed of the parabolic
+	//projectile at any given time
+	gravityAccel = - projectileSpeed/300;
+	initialVerticalSpeed;
+	initialTime;
+
+	constructor(position, direction, speed) {
+		super(position, direction, speed);
+		//initial parameters for vertical yeet
+		this.initialVerticalSpeed = this.velocity.y;
+		this.initialTime = Date.now();
+	}
+
 	update(deltaTime) {
-		// position += velocity*time
-		this.mesh.position.add(this.velocity.clone().multiplyScalar(deltaTime));
-		this.mesh.position.y += 0.1 * Math.sin(this.mesh.position.x);
+		const currentTime = Date.now();
+		
+		// vy = v0 + at, vx is the same as standart projectile
+		const movement = new THREE.Matrix4().makeTranslation(
+			this.velocity.x * deltaTime,
+			(this.initialVerticalSpeed + this.gravityAccel*(currentTime - this.initialTime))*deltaTime,
+			0
+		)
+		this.mesh.applyMatrix4(movement);
+
 	}
 }
 
@@ -319,7 +340,7 @@ const tankTurretEnd = tankPivot.children[0].children[0];
 
 const rotationSpeed = 1;
 const movementSpeed = 1;
-const projectileSpeed = 5;
+const projectileSpeed = 15;
 
 function handleInput(deltaTime) {
 
