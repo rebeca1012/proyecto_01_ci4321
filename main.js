@@ -46,12 +46,16 @@ class Projectile {
 
 		this.mesh.position.copy(position);
 		this.velocity = direction.normalize().multiplyScalar(speed);
+
+		//adding a bounding box for collision detection
+		this.boundingBox = new THREE.Box3().setFromObject(this.mesh);
 	}
 
 	//function to update the projectile position
 	update(deltaTime) {
 		// position += velocity*time
 		this.mesh.position.add(this.velocity.clone().multiplyScalar(deltaTime));
+		this.boundingBox.setFromObject(this.mesh);
 	}
 }
 class parabolicProjectile extends Projectile {
@@ -79,6 +83,7 @@ class parabolicProjectile extends Projectile {
 			0
 		)
 		this.mesh.applyMatrix4(movement);
+		this.boundingBox.setFromObject(this.mesh);
 
 	}
 }
@@ -184,6 +189,9 @@ function createObstacleBox(position, size) {
     const material = new THREE.MeshStandardMaterial({ map: woodTexture });
     const box = new THREE.Mesh(geometry, material);
     box.position.copy(position);
+
+	const boundingBox = new THREE.Box3().setFromObject(box);
+	box.userData.boundingBox = boundingBox;
     return box;
   }
 
@@ -260,6 +268,10 @@ function createCircularTarget(position, radius, depth) {
     group.add(back);
   
     group.position.copy(position);
+
+	const boundingBox = new THREE.Box3().setFromObject(group);
+	group.userData.boundingBox = boundingBox;
+
     return group;
   }
   
@@ -272,20 +284,26 @@ scene.add(tank);
 
 
 // create and add obstacles
+const obstacles = [];
 const obstacle1 = createObstacleBox(new THREE.Vector3(3, 0., 0), new THREE.Vector3(1.0, 1.0, 1.0));
 const obstacle2 = createObstacleBox(new THREE.Vector3(-3, 0, 0), new THREE.Vector3(1.0, 1.0, 1.0));
 const obstacle3 = createObstacleBox(new THREE.Vector3(0, 0, -4), new THREE.Vector3(2.0, 1.0, 1.0));
 
 scene.add(obstacle1);
+obstacles.push(obstacle1);
 scene.add(obstacle2);
+obstacles.push(obstacle2);
 scene.add(obstacle3);
+obstacles.push(obstacle3);
 
 // Creating and adding circular targets
 const target1 = createCircularTarget(new THREE.Vector3(4, 2, -3), 0.5, 0.1);
 const target2 = createCircularTarget(new THREE.Vector3(-4, 4, -3), 0.5, 0.1);
 
 scene.add(target1);
+obstacles.push(target1);
 scene.add(target2);
+obstacles.push(target2);
 
 // Add the floor to the scene
 addFloor(scene);
@@ -527,6 +545,22 @@ function updateElements(deltaTime){
 	projectiles.forEach(projectile => {
 		projectile.update(deltaTime);
 	});
+
+	//collision detection (this is one of the codes of all time)
+	projectiles.forEach(projectile => {
+		obstacles.forEach(obstacle => {
+			if (obstacle.userData.boundingBox.intersectsBox(projectile.boundingBox)) {
+				//remove projectile
+				scene.remove(projectile.mesh);
+				projectiles.splice(projectiles.indexOf(projectile), 1);
+
+				//remove obstacle
+				scene.remove(obstacle);
+				obstacles.splice(obstacles.indexOf(obstacle), 1);
+			}
+		});
+	});
+
 
 }
 //render and animation function
