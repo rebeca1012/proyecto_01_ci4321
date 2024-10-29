@@ -41,7 +41,7 @@ class Projectile {
 	constructor(position, direction, speed) {
 
 		const geometry = new THREE.SphereGeometry(0.075, 8, 8);
-		const material = new THREE.MeshStandardMaterial({color: 0x333333});
+		const material = new THREE.MeshStandardMaterial({color: 0xC0C0C0});
 		this.mesh = new THREE.Mesh(geometry, material);
 
 		this.mesh.position.copy(position);
@@ -55,10 +55,24 @@ class Projectile {
 	}
 }
 class parabolicProjectile extends Projectile {
+	
+	gravityAccel = - projectileSpeed/300;
+	initialVerticalSpeed;
+	initialTime;
+
+	constructor(position, direction, speed) {
+		super(position, direction, speed);
+		this.initialVerticalSpeed = this.velocity.y;
+		this.initialTime = Date.now();
+	}
+
 	update(deltaTime) {
-		// position += velocity*time
-		this.mesh.position.add(this.velocity.clone().multiplyScalar(deltaTime));
-		this.mesh.position.y += 0.1 * Math.sin(this.mesh.position.x);
+		const currentTime = Date.now();
+		// v = v0 + at
+		this.mesh.position.x += (this.velocity.x)*deltaTime;
+		this.mesh.position.y += (this.initialVerticalSpeed + this.gravityAccel*(currentTime - this.initialTime))*deltaTime;
+
+		//clone().multiplyScalar(deltaTime));
 	}
 }
 
@@ -319,7 +333,7 @@ const tankTurretEnd = tankPivot.children[0].children[0];
 
 const rotationSpeed = 1;
 const movementSpeed = 1;
-const projectileSpeed = 5;
+const projectileSpeed = 15;
 
 function handleInput(deltaTime) {
 
