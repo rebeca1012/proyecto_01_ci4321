@@ -56,23 +56,30 @@ class Projectile {
 }
 class parabolicProjectile extends Projectile {
 	
+	//We will use these to calculate the speed of the parabolic
+	//projectile at any given time
 	gravityAccel = - projectileSpeed/300;
 	initialVerticalSpeed;
 	initialTime;
 
 	constructor(position, direction, speed) {
 		super(position, direction, speed);
+		//initial parameters for vertical yeet
 		this.initialVerticalSpeed = this.velocity.y;
 		this.initialTime = Date.now();
 	}
 
 	update(deltaTime) {
 		const currentTime = Date.now();
-		// v = v0 + at
-		this.mesh.position.x += (this.velocity.x)*deltaTime;
-		this.mesh.position.y += (this.initialVerticalSpeed + this.gravityAccel*(currentTime - this.initialTime))*deltaTime;
+		
+		// vy = v0 + at, vx is the same as standart projectile
+		const movement = new THREE.Matrix4().makeTranslation(
+			this.velocity.x * deltaTime,
+			(this.initialVerticalSpeed + this.gravityAccel*(currentTime - this.initialTime))*deltaTime,
+			0
+		)
+		this.mesh.applyMatrix4(movement);
 
-		//clone().multiplyScalar(deltaTime));
 	}
 }
 
